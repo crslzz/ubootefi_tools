@@ -1,6 +1,7 @@
 # Build artifacts
 *.o
 ubootefi_dump
+ubootefi_edit
 
 # Editor backup files
 *~

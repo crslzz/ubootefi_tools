@@ -13,18 +13,28 @@ BINDIR := $(PREFIX)/bin
 MANDIR := $(PREFIX)/share/man/man1
 
 # Source files
-SRC := ubootefi_dump.c
-OBJ := $(SRC:.c=.o)
-TARGET := ubootefi_dump
+DUMP_SRC := ubootefi_dump.c
+DUMP_OBJ := $(DUMP_SRC:.c=.o)
+DUMP_TARGET := ubootefi_dump
+
+EDIT_SRC := ubootefi_edit.c
+EDIT_OBJ := $(EDIT_SRC:.c=.o)
+EDIT_TARGET := ubootefi_edit
+
+ALL_TARGETS := $(DUMP_TARGET) $(EDIT_TARGET)
 
 # Default target
 .PHONY: all
-all: $(TARGET)
+all: $(ALL_TARGETS)
 
-# Build the executable
-$(TARGET): $(OBJ)
+# Build the executables
+$(DUMP_TARGET): $(DUMP_OBJ)
 	$(CC) $(LDFLAGS) -o $@ $^
-	@echo "Build complete: $(TARGET)"
+	@echo "Build complete: $(DUMP_TARGET)"
+
+$(EDIT_TARGET): $(EDIT_OBJ)
+	$(CC) $(LDFLAGS) -o $@ $^
+	@echo "Build complete: $(EDIT_TARGET)"
 
 # Compile source to object
 %.o: %.c
@@ -33,36 +43,39 @@ $(TARGET): $(OBJ)
 # Debug build
 .PHONY: debug
 debug: CFLAGS := $(DEBUGFLAGS) -Wall -Wextra -std=c11
-debug: clean $(TARGET)
-	@echo "Debug build complete: $(TARGET)"
+debug: clean $(ALL_TARGETS)
+	@echo "Debug build complete"
 
-# Install the binary
+# Install the binaries
 .PHONY: install
-install: $(TARGET)
-	@echo "Installing $(TARGET) to $(BINDIR)..."
+install: $(ALL_TARGETS)
+	@echo "Installing to $(BINDIR)..."
 	install -d $(BINDIR)
-	install -m 755 $(TARGET) $(BINDIR)/$(TARGET)
+	install -m 755 $(DUMP_TARGET) $(BINDIR)/$(DUMP_TARGET)
+	install -m 755 $(EDIT_TARGET) $(BINDIR)/$(EDIT_TARGET)
 	@echo "Installation complete"
 
 # Uninstall
 .PHONY: uninstall
 uninstall:
-	@echo "Uninstalling $(TARGET) from $(BINDIR)..."
-	rm -f $(BINDIR)/$(TARGET)
+	@echo "Uninstalling from $(BINDIR)..."
+	rm -f $(BINDIR)/$(DUMP_TARGET)
+	rm -f $(BINDIR)/$(EDIT_TARGET)
 	@echo "Uninstall complete"
 
 # Clean build artifacts
 .PHONY: clean
 clean:
-	rm -f $(OBJ) $(TARGET)
+	rm -f $(DUMP_OBJ) $(DUMP_TARGET)
+	rm -f $(EDIT_OBJ) $(EDIT_TARGET)
 	@echo "Clean complete"
 
-# Run the program on test file
+# Run the dump program on test file
 .PHONY: test
-test: $(TARGET)
+test: $(DUMP_TARGET)
 	@if [ -f ubootefi.var ]; then \
-		echo "Running $(TARGET) on ubootefi.var..."; \
-		./$(TARGET) ubootefi.var; \
+		echo "Running $(DUMP_TARGET) on ubootefi.var..."; \
+		./$(DUMP_TARGET) ubootefi.var; \
 	else \
 		echo "Error: ubootefi.var not found"; \
 		exit 1; \
@@ -70,14 +83,14 @@ test: $(TARGET)
 
 # Check code with static analyzer
 .PHONY: check
-check: $(SRC)
+check: $(DUMP_SRC) $(EDIT_SRC)
 	@echo "Running static analysis..."
-	@which cppcheck > /dev/null 2>&1 && cppcheck --enable=all --suppress=missingIncludeSystem $(SRC) || echo "cppcheck not installed"
+	@which cppcheck > /dev/null 2>&1 && cppcheck --enable=all --suppress=missingIncludeSystem $(DUMP_SRC) $(EDIT_SRC) || echo "cppcheck not installed"
 
 # Format code (requires clang-format)
 .PHONY: format
 format:
-	@which clang-format > /dev/null 2>&1 && clang-format -i $(SRC) || echo "clang-format not installed"
+	@which clang-format > /dev/null 2>&1 && clang-format -i $(DUMP_SRC) $(EDIT_SRC) || echo "clang-format not installed"
 
 # Show help
 .PHONY: help
@@ -112,11 +125,15 @@ help:
 # Print variables (for debugging the Makefile)
 .PHONY: vars
 vars:
-	@echo "CC       = $(CC)"
-	@echo "CFLAGS   = $(CFLAGS)"
-	@echo "LDFLAGS  = $(LDFLAGS)"
-	@echo "SRC      = $(SRC)"
-	@echo "OBJ      = $(OBJ)"
-	@echo "TARGET   = $(TARGET)"
-	@echo "PREFIX   = $(PREFIX)"
-	@echo "BINDIR   = $(BINDIR)"
+	@echo "CC          = $(CC)"
+	@echo "CFLAGS      = $(CFLAGS)"
+	@echo "LDFLAGS     = $(LDFLAGS)"
+	@echo "DUMP_SRC    = $(DUMP_SRC)"
+	@echo "DUMP_OBJ    = $(DUMP_OBJ)"
+	@echo "DUMP_TARGET = $(DUMP_TARGET)"
+	@echo "EDIT_SRC    = $(EDIT_SRC)"
+	@echo "EDIT_OBJ    = $(EDIT_OBJ)"
+	@echo "EDIT_TARGET = $(EDIT_TARGET)"
+	@echo "ALL_TARGETS = $(ALL_TARGETS)"
+	@echo "PREFIX      = $(PREFIX)"
+	@echo "BINDIR      = $(BINDIR)"
