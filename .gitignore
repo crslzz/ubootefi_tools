@@ -1,0 +1,21 @@
+# Build artifacts
+*.o
+ubootefi_dump
+
+# Editor backup files
+*~
+*.swp
+*.swo
+.*.sw?
+
+# IDE files
+.vscode/
+.idea/
+*.code-workspace
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test output
+*.log
