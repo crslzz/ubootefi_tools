@@ -1,8 +1,9 @@
 /*
- * ubootefi_edit.c - Add or remove EFI variables in U-Boot EFI variable files
+ * ubootefi_edit.c - Create, add, or remove EFI variables in U-Boot EFI variable files
  *
  * Compile: gcc -o ubootefi_edit ubootefi_edit.c
  * Usage:
+ *   Create: ./ubootefi_edit <file> create
  *   Add:    ./ubootefi_edit <file> add <name> <guid> <attr> <data|@file> [time]
  *   Remove: ./ubootefi_edit <file> remove <name> <guid>
  */
@@ -535,9 +536,59 @@ int remove_variable(const char *filename, const char *name, const efi_guid_t *gu
     return 0;
 }
 
+/* Create a new empty EFI variable file */
+int create_file(const char *filename)
+{
+    FILE *fp;
+    struct efi_var_file header;
+
+    /* Check if file already exists */
+    fp = fopen(filename, "rb");
+    if (fp) {
+        fclose(fp);
+        fprintf(stderr, "Error: File '%s' already exists\n", filename);
+        return 1;
+    }
+
+    /* Initialize header */
+    memset(&header, 0, sizeof(header));
+    header.reserved = 0;
+    header.magic = EFI_VAR_FILE_MAGIC;
+    header.length = sizeof(header);  /* Only header, no variables yet */
+
+    /* CRC32 of empty data (no variables) */
+    init_crc32_table();
+    header.crc32 = calculate_crc32((uint8_t*)"", 0);  /* CRC of empty data */
+
+    /* Create file */
+    fp = fopen(filename, "wb");
+    if (!fp) {
+        fprintf(stderr, "Error: Cannot create file '%s': %s\n", filename, strerror(errno));
+        return 1;
+    }
+
+    if (fwrite(&header, 1, sizeof(header), fp) != sizeof(header)) {
+        fprintf(stderr, "Error: Failed to write file header\n");
+        fclose(fp);
+        return 1;
+    }
+
+    fclose(fp);
+
+    printf("Successfully created empty EFI variable file '%s'\n", filename);
+    printf("  File size: %zu bytes (header only)\n", sizeof(header));
+    printf("  Magic: 0x%016llx\n", (unsigned long long)header.magic);
+    printf("  CRC32: 0x%08x\n", header.crc32);
+
+    return 0;
+}
+
 void print_usage(const char *prog)
 {
     fprintf(stderr, "Usage:\n");
+    fprintf(stderr, "  Create new file:\n");
+    fprintf(stderr, "    %s <file> create\n", prog);
+    fprintf(stderr, "\n");
     fprintf(stderr, "  Add variable:\n");
     fprintf(stderr, "    %s <file> add <name> <guid> <attr> <data|@file> [time]\n", prog);
     fprintf(stderr, "\n");
@@ -565,6 +616,9 @@ void print_usage(const char *prog)
     fprintf(stderr, "  Standard: NV,BS,RT or 0x00000007\n");
     fprintf(stderr, "\n");
     fprintf(stderr, "Examples:\n");
+    fprintf(stderr, "  # Create new empty file\n");
+    fprintf(stderr, "  %s ubootefi.var create\n", prog);
+    fprintf(stderr, "\n");
     fprintf(stderr, "  # Add variable with hex data\n");
     fprintf(stderr, "  %s ubootefi.var add TestVar \\\n", prog);
     fprintf(stderr, "    8be4df61-93ca-11d2-aa0d-00e098032b8c NV,BS,RT '48656c6c6f'\n");
@@ -580,7 +634,7 @@ void print_usage(const char *prog)
 
 int main(int argc, char *argv[])
 {
-    if (argc < 4) {
+    if (argc < 3) {
         print_usage(argv[0]);
         return 1;
     }
@@ -588,7 +642,16 @@ int main(int argc, char *argv[])
     const char *filename = argv[1];
     const char *operation = argv[2];
 
-    if (strcmp(operation, "add") == 0) {
+    if (strcmp(operation, "create") == 0) {
+        if (argc != 3) {
+            fprintf(stderr, "Error: 'create' operation takes no additional arguments\n\n");
+            print_usage(argv[0]);
+            return 1;
+        }
+
+        return create_file(filename);
+
+    } else if (strcmp(operation, "add") == 0) {
         if (argc < 7) {
             fprintf(stderr, "Error: Missing arguments for 'add' operation\n\n");
             print_usage(argv[0]);

@@ -41,6 +41,7 @@ These tools are useful for:
 
 ### ubootefi_edit Features
 
+- ✅ Create new empty EFI variable files
 - ✅ Add new EFI variables to existing files
 - ✅ Remove existing EFI variables by name and GUID
 - ✅ Accept variable data as hex strings or from files
@@ -49,6 +50,7 @@ These tools are useful for:
 - ✅ Maintain 8-byte entry alignment
 - ✅ Preserve file integrity
 - ✅ Prevent duplicate variable names
+- ✅ Prevent overwriting existing files when creating
 
 ## Installation
 
@@ -129,6 +131,9 @@ Total variables found: 4
 ### ubootefi_edit - Basic Usage
 
 ```bash
+# Create a new empty EFI variable file
+./ubootefi_edit <file> create
+
 # Add a variable with hex data
 ./ubootefi_edit <file> add <name> <guid> <attr> <hex-data> [time]
 
@@ -137,6 +142,16 @@ Total variables found: 4
 
 # Remove a variable
 ./ubootefi_edit <file> remove <name> <guid>
+```
+
+#### Create File Example
+
+```bash
+# Create a new empty EFI variable file
+./ubootefi_edit my_efi_vars.var create
+
+# Verify it was created
+./ubootefi_dump my_efi_vars.var
 ```
 
 #### Add Variable Examples
@@ -413,14 +428,19 @@ cp /boot/efi/ubootefi.var /boot/efi/ubootefi.var.backup
 ### Testing and Development
 
 ```bash
-# Create a minimal test file with one variable
-cp ubootefi.var test.var
+# Create a new test file from scratch
+./ubootefi_edit test.var create
+
+# Add some test variables
 ./ubootefi_edit test.var add TestData \
   8be4df61-93ca-11d2-aa0d-00e098032b8c NV,BS,RT \
   '0102030405060708'
 
 # Verify it was added correctly
 ./ubootefi_dump test.var
+
+# Clean up
+rm test.var
 ```
 
 ## Troubleshooting
@@ -446,6 +466,10 @@ The file header's length field doesn't match the actual file size. This may indi
 - The file may be corrupted
 
 ### ubootefi_edit Issues
+
+#### "Error: File already exists"
+
+When using the `create` command, the target file already exists. Either use a different filename or delete the existing file first.
 
 #### "Error: Variable already exists"
 
